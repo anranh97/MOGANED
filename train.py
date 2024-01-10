@@ -14,13 +14,22 @@ def train(model, iterator, optimizer, criterion):
     model.train()
     for i, batch in enumerate(iterator):
         tokens_2d, triggers_2d, entities_3d, postags_2d, adj, seqlen_1d, words, triggers = batch
+        # input_ids, input_mask, segment_ids, label_ids, token_lens, entities, postags, adj_li, seqlen, sentence_li, triggers_li = batch
         optimizer.zero_grad()
         trigger_logits, trigger_hat_2d = model.predict_triggers(tokens_2d=tokens_2d, entities_3d=entities_3d,
                                     postags_2d=postags_2d, seqlen_1d=seqlen_1d, adjm=adj)
 
         triggers_y_2d = torch.LongTensor(triggers_2d).to(model.device)
+
+        # trigger_logits, trigger_hat_2d = model.predict_triggers()
+        # triggers_y_2d = torch.LongTensor(label_ids).to(model.device)
         trigger_logits = trigger_logits.view(-1, trigger_logits.shape[-1])
         trigger_loss = criterion(trigger_logits, triggers_y_2d.view(-1))
+
+        # mask = (triggers_y_2d.view(-1) != 0)
+        # filtered_logits = trigger_logits[mask]
+        # filtered_targets = triggers_y_2d.view(-1)[mask]
+        # trigger_loss = criterion(filtered_logits, filtered_targets)
 
         loss = trigger_loss
         loss.backward()
@@ -59,6 +68,15 @@ if __name__ == "__main__":
     dev_dataset = ACE2005Dataset(hp.devset)
     test_dataset = ACE2005Dataset(hp.testset)
 
+    # train_iter = data.DataLoader(dataset=train_dataset,
+    #                              batch_size=hp.batch_size,
+    #                              shuffle=True)
+    # dev_iter = data.DataLoader(dataset=dev_dataset,
+    #                            batch_size=hp.batch_size,
+    #                            shuffle=False)
+    # test_iter = data.DataLoader(dataset=test_dataset,
+    #                             batch_size=hp.batch_size,
+    #                             shuffle=False)
     train_iter = data.DataLoader(dataset=train_dataset,
                                  batch_size=hp.batch_size,
                                  shuffle=True,

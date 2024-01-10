@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils import EmbeddingLayer, MultiLabelEmbeddingLayer, get_positions
+from utils import EmbeddingLayer, BertEmbeddingLayer, MultiLabelEmbeddingLayer, get_positions
 from GCN import MOGCN
 
 class Net(nn.Module):
@@ -12,6 +12,7 @@ class Net(nn.Module):
         self.device = device
         self.word_embed = EmbeddingLayer(embedding_size=word_size, embedding_matrix=word_emb,
                                           device=device)
+        # self.word_embed = BertEmbeddingLayer(device=device)
         self.entity_embed = MultiLabelEmbeddingLayer(num_embeddings=entity_size[0], embedding_dim=entity_size[1], device=device)
 
         self.postag_embed = EmbeddingLayer(embedding_size=postags_size, device=device)
@@ -32,6 +33,7 @@ class Net(nn.Module):
         pos_emb = self.postag_embed(postags_2d)
         ent_emb = self.entity_embed(entities_3d)
         BATCH_SIZE, SEQ_LEN = tokens.shape[:]
+        # SEQ_LEN -= 2
         mask = torch.zeros(BATCH_SIZE, SEQ_LEN)
         for i in range(BATCH_SIZE):
             s_len = seqlen_1d[i]
@@ -44,6 +46,7 @@ class Net(nn.Module):
                             adjmm in adjm])
         adj = adj.to(self.device)
         x_emb = torch.cat([word_emb, pos_emb, ent_emb], 2)
+        # x_emb = word_emb
         positional_sequences = get_positions(BATCH_SIZE, SEQ_LEN)
         xx = []
         for i in range(SEQ_LEN):
@@ -53,8 +56,8 @@ class Net(nn.Module):
             x, _ = self.rnn(lstm_input)  # (batch_size, seq_len, d')
             # gcns
             gcn_o = self.mogcn(adj, x) #[batch_size, SEQ_LEN, d]
-
             xx.append(gcn_o[:,i,:])  # (batch_size, d')
+            # xx.append(x[:,i,:])
         # output linear
         xx = torch.stack(xx, dim=1)  # (batch_size, seq_len, d')
         xx_m = torch.mul(xx, mask.unsqueeze(2))

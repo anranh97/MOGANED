@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from consts import NONE, PAD, WORD_DIM, MAXLEN
-
+from transformers import BertModel, BertConfig
 
 def build_vocab(labels, BIO_tagging=True):
     all_labels = [PAD, NONE]
+    # all_labels = [NONE]
     for label in labels:
         if BIO_tagging:
             all_labels.append('B-{}'.format(label))
@@ -113,6 +114,33 @@ class EmbeddingLayer(nn.Module):
             return F.dropout(self.matrix(x), p=self.dropout, training=self.training)
         else:
             return self.matrix(x)
+        
+class BertEmbeddingLayer(nn.Module):
+    def __init__(self, model_name="E:/Code/NewsBERT", device=torch.device("cpu")):
+        super(BertEmbeddingLayer, self).__init__()
+        
+        self.bert = BertModel.from_pretrained(model_name)
+        self.dropout = nn.Dropout(0.1)
+        self.device = device
+        self.to(device)
+
+    def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, token_lens=None):
+        outputs = self.bert(input_ids,
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids)
+        
+        sequence_output = outputs[0] # (batch_size, seq_len, hidden_size)
+
+        sequence_output = self.dropout(sequence_output)
+        
+        token_embs, st_idx = [], 1
+        for token_len in token_lens:
+            if token_len == 1:
+                token_embs.append(sequence_output[:, st_idx, :])
+            else:
+                assert token_len > 0
+                token_embs.append(torch.sum(sequence_output[:, st_idx:st_idx + token_len, :], dim=1))
+        token_embs = torch.stack(token_embs, 1)
 
 class MultiLabelEmbeddingLayer(nn.Module):
     def __init__(self,

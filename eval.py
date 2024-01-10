@@ -20,7 +20,7 @@ def eval(model, iterator, fname, write):
             triggers_hat_all.extend(trigger_hat_2d.cpu().numpy().tolist())
 
     triggers_true, triggers_pred = [], []
-    with open('temp', 'w') as fout:
+    with open('temp', 'w', encoding='utf-8') as fout:
         for i, (words, triggers, triggers_hat) in enumerate(zip(words_all, triggers_all, triggers_hat_all)):
             triggers_hat = triggers_hat[:len(words)]
             triggers_hat = [idx2trigger[hat] for hat in triggers_hat]
@@ -47,7 +47,7 @@ def eval(model, iterator, fname, write):
     metric += '[trigger identification]\tP={:.3f}\tR={:.3f}\tF1={:.3f}\n'.format(trigger_p_, trigger_r_, trigger_f1_)
     final = fname
     if write:
-        with open(final, 'w') as fout:
+        with open(final, 'w', encoding='utf-8') as fout:
             result = open("temp", "r").read()
             fout.write("{}\n".format(result))
             fout.write(metric)

@@ -6,8 +6,11 @@ import json
 from consts import NONE, PAD, TRIGGERS, ENTITIES, POSTAGS, MAXLEN, wordemb_file
 from utils import build_vocab, load_embedding
 
+# from transformers import BertTokenizer
+
 # init vocab
 all_triggers, trigger2idx, idx2trigger = build_vocab(TRIGGERS, BIO_tagging=False)
+# all_triggers, trigger2idx, idx2trigger = build_vocab(TRIGGERS)
 all_entities, entity2idx, idx2entity = build_vocab(ENTITIES)
 all_postags, postag2idx, idx2postag = build_vocab(POSTAGS, BIO_tagging=False)
 word2id, wordemb = load_embedding(wordemb_file)
@@ -43,14 +46,24 @@ class ACE2005Dataset(data.Dataset):
 
                 for event_mention in item['golden-event-mentions']:
                     for i in range(event_mention['trigger']['start'], event_mention['trigger']['end']):
+                        event_type = event_mention['event_type']
                         if i < MAXLEN:
                             triggers[i] = event_mention['event_type']
+                            # if i == event_mention['trigger']['start']:
+                            #     event_type = 'B-{}'.format(event_type)
+                            # else:
+                            #     event_type = 'I-{}'.format(event_type)
+                            # triggers[i] = event_type
                 
                 self.sent_li.append(words)
                 self.triggers_li.append(triggers)
                 self.entities_li.append(entities)
                 self.postags_li.append(postags)
                 self.adj.append([adjpos, adjv])
+        
+        # self.label_map = {label: i for i, label in enumerate(LABELS+['O'])}
+        # self.pad_token_label_id = -100
+        # self.max_seq_length = 256
 
 
     def __len__(self):
@@ -61,11 +74,43 @@ class ACE2005Dataset(data.Dataset):
         
         tokens = [word2id[w] if w in word2id else 1 for w in sentence_li]
         triggers = [trigger2idx[t] for t in triggers_li]
+        # tokens = []
+        # token_lens = []
+        # label_ids = []
+        # for word, label in zip(sentence_li, triggers_li):
+        #     word_tokens = BertTokenizer.tokenize(word)
+        #     token_lens.append(len(word_tokens))
+        #     tokens.extend(word_tokens)
+        #     label_ids.extend([self.label_map[label]] + [self.pad_token_label_id] * (len(word_tokens) - 1))
+        
+        # special_tokens_count = 2
+        # if len(tokens) > self.max_seq_length - special_tokens_count:
+        #     tokens = tokens[:(self.max_seq_length - special_tokens_count)]
+        #     label_ids = label_ids[:(self.max_seq_length - special_tokens_count)]
+
+        # tokens = [BertTokenizer.cls_token] + tokens + [BertTokenizer.sep_token]
+        # label_ids = [self.pad_token_label_id] + label_ids + [self.pad_token_label_id]
+        # input_ids = BertTokenizer.convert_tokens_to_ids(tokens)
+        # segment_ids = [0] * len(tokens)
+        # input_mask = [1] * len(input_ids)
+
+        # padding_length = self.max_seq_length - len(input_ids)
+        # input_ids += ([0] * padding_length)
+        # input_mask += ([0] * padding_length)
+        # segment_ids += ([0] * padding_length)
+        # label_ids += ([self.pad_token_label_id] * padding_length)
+
+        # padding_token_length = self.max_seq_length - len(token_lens)
+        # token_lens += ([0] * padding_token_length)
+
         postags = [postag2idx[p] for p in postags_li]
         entities = [[entity2idx[e] for e in ent] for ent in entities_li]
         seqlen = len(tokens)
-
+        # seqlen = len(sentence_li)
+        # postags = []
+        # entities = []
         return tokens, triggers, entities, postags, adj_li, seqlen, sentence_li, triggers_li
+        # return input_ids, input_mask, segment_ids, label_ids, token_lens, entities, postags, adj_li, seqlen, sentence_li, triggers_li
 
     def get_samples_weight(self):
         samples_weight = []
